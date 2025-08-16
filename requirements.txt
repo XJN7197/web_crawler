@@ -1,0 +1,50 @@
+# 微博爬虫系统依赖包
+
+# 网络请求
+requests>=2.28.0
+urllib3>=1.26.0
+
+# HTML解析
+beautifulsoup4>=4.11.0
+lxml>=4.9.0
+
+# 数据库
+PyMySQL>=1.0.2
+
+# 数据处理
+pandas>=1.5.0
+numpy>=1.21.0
+
+# 浏览器自动化（可选，用于处理JavaScript渲染的页面）
+selenium>=4.5.0
+
+# 图像处理（可选，用于处理图片）
+Pillow>=9.0.0
+
+# 进度条显示
+tqdm>=4.64.0
+
+# 配置文件处理
+PyYAML>=6.0
+
+# 时间处理
+python-dateutil>=2.8.0
+
+# 日志增强
+colorlog>=6.7.0
+
+# 代理池管理（可选）
+requests-toolbelt>=0.10.0
+
+# 数据验证
+jsonschema>=4.17.0
+
+# 异步支持（可选）
+aiohttp>=3.8.0
+asyncio>=3.4.3
+
+# 字符编码检测
+chardet>=5.0.0
+
+# 正则表达式增强
+regex>=2022.10.0
