@@ -106,7 +106,7 @@ class WeiboSpider:
                 
                 # 保存原始数据
                 if self.storage_manager and weibo_list:
-                    self.storage_manager.save_raw_data(weibo_list, page, "weibo_web")
+                    self.storage_manager.save_raw_data(weibo_list, page, "weibo_web", "weibo")
                 
                 return weibo_list
             else:
@@ -167,7 +167,7 @@ class WeiboSpider:
                     
                     # 保存原始数据
                     if self.storage_manager and weibo_list:
-                        self.storage_manager.save_raw_data(weibo_list, page, "weibo_mobile")
+                        self.storage_manager.save_raw_data(weibo_list, page, "weibo_mobile", "weibo")
                     
                     return weibo_list
                 except json.JSONDecodeError as e:

@@ -1,0 +1,29 @@
+名称,备注,实现情况
+_id,微博ID,√
+mblogid,文本ID,
+created_at,创建时间,√
+geo:type,类型 如“Point”,
+geo:coordinates,坐标,
+geo:detail:poiid,POI地点ID,
+geo:detail:title,标题 如宁波,
+geo:detail:type,类型 如签到为“checkin”,
+geo:detail:spot_type,,
+ip_location,IP地址,√
+reposts_count,转发数量,√
+comments_count,评论数量,√
+attitudes_count,点赞数量,√
+source,引用,包含在正文中，需提取
+content,正文,√
+pic_urls,图片URL,包含在正文中，需提取
+pic_num,图片数量,
+isLongText,是否为长文本,
+user:_id,用户ID,√
+user:avatar_hd,用户高清头像URL,○
+user:nick_name,用户昵称,√
+user:verified,微博是否认证 取值为true和false,○
+user:mbrank,微博会员等级,○
+user:mbtype,微博会员类型,○
+user:verified_type,微博认证类型 没有认证值为-1，个人认证值为1，企业认证值为2，政府认证值为3,○
+url,文本URL,
+keyword,关键词,√
+crawl_time,获取时间,√

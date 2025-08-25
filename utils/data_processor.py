@@ -255,10 +255,160 @@ class DataProcessor:
         unique_data = []
         
         for data in data_list:
-            weibo_id = data.get('_id')
-            if weibo_id and weibo_id not in seen_ids:
-                seen_ids.add(weibo_id)
+            content_id = data.get('_id')
+            if content_id and content_id not in seen_ids:
+                seen_ids.add(content_id)
                 unique_data.append(data)
         
         logger.info(f"去重前: {len(data_list)} 条，去重后: {len(unique_data)} 条")
         return unique_data
+    
+    def validate_douyin_data(self, data: Dict[str, Any]) -> bool:
+        """验证抖音数据完整性"""
+        required_fields = ['_id', 'content', 'keyword']
+        
+        try:
+            for field in required_fields:
+                if field not in data or not data[field]:
+                    logger.warning(f"缺少必要字段: {field}")
+                    return False
+            
+            # 验证数据类型
+            numeric_fields = ['digg_count', 'comment_count', 'share_count', 'play_count']
+            for field in numeric_fields:
+                if not isinstance(data.get(field, 0), int):
+                    data[field] = 0
+            
+            # 验证视频时长
+            if not isinstance(data.get('video_duration', 0), (int, float)):
+                data['video_duration'] = 0
+            
+            # 验证时间格式
+            if data.get('created_at') and not isinstance(data['created_at'], datetime):
+                logger.warning("创建时间格式不正确")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"验证抖音数据失败: {e}")
+            return False
+    
+    def normalize_douyin_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """标准化抖音数据格式"""
+        try:
+            # 清理内容
+            if data.get('content'):
+                data['content'] = self.clean_content(data['content'])
+            
+            # 标准化用户名
+            if data.get('user_name'):
+                data['user_name'] = data['user_name'].strip()
+            
+            # 标准化音乐信息
+            if data.get('music_title'):
+                data['music_title'] = data['music_title'].strip()
+            if data.get('music_author'):
+                data['music_author'] = data['music_author'].strip()
+            
+            # 标准化地理位置
+            if data.get('location'):
+                data['location'] = data['location'].strip()
+            
+            # 确保数值字段为整数
+            numeric_fields = ['digg_count', 'comment_count', 'share_count', 'play_count']
+            for field in numeric_fields:
+                if field in data:
+                    try:
+                        data[field] = int(data[field]) if data[field] is not None else 0
+                    except (ValueError, TypeError):
+                        data[field] = 0
+            
+            # 确保视频时长为浮点数
+            if 'video_duration' in data:
+                try:
+                    data['video_duration'] = float(data['video_duration']) if data['video_duration'] is not None else 0.0
+                except (ValueError, TypeError):
+                    data['video_duration'] = 0.0
+            
+            # 确保布尔字段
+            if 'user_verified' in data:
+                data['user_verified'] = bool(data['user_verified']) if data['user_verified'] is not None else False
+            
+            return data
+            
+        except Exception as e:
+            logger.error(f"标准化抖音数据失败: {e}")
+            return data
+    
+    def extract_douyin_hashtags(self, content: str) -> List[str]:
+        """提取抖音话题标签"""
+        try:
+            # 抖音话题标签格式：#话题名#
+            hashtags = re.findall(r'#([^#\s]+)#', content)
+            return [tag.strip() for tag in hashtags if tag.strip()]
+        except Exception as e:
+            logger.warning(f"提取抖音话题标签失败: {e}")
+            return []
+    
+    def extract_douyin_mentions(self, content: str) -> List[str]:
+        """提取抖音@用户"""
+        try:
+            # 抖音@用户格式：@用户名
+            mentions = re.findall(r'@([^\s@#]+)', content)
+            return [mention.strip() for mention in mentions if mention.strip()]
+        except Exception as e:
+            logger.warning(f"提取抖音@用户失败: {e}")
+            return []
+    
+    def process_douyin_video_info(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
+        """处理抖音视频信息"""
+        processed = {
+            'video_url': '',
+            'video_cover': '',
+            'video_duration': 0.0,
+            'video_width': 0,
+            'video_height': 0
+        }
+        
+        try:
+            if not video_data:
+                return processed
+            
+            # 视频URL
+            play_addr = video_data.get('play_addr', {})
+            if play_addr and 'url_list' in play_addr and play_addr['url_list']:
+                processed['video_url'] = play_addr['url_list'][0]
+            
+            # 视频封面
+            cover = video_data.get('cover', {})
+            if cover and 'url_list' in cover and cover['url_list']:
+                processed['video_cover'] = cover['url_list'][0]
+            
+            # 视频时长（毫秒转秒）
+            duration = video_data.get('duration', 0)
+            processed['video_duration'] = duration / 1000.0 if duration else 0.0
+            
+            # 视频尺寸
+            processed['video_width'] = video_data.get('width', 0)
+            processed['video_height'] = video_data.get('height', 0)
+            
+            return processed
+            
+        except Exception as e:
+            logger.warning(f"处理抖音视频信息失败: {e}")
+            return processed
+    
+    def validate_platform_data(self, data: Dict[str, Any], platform: str = 'weibo') -> bool:
+        """根据平台验证数据"""
+        if platform.lower() == 'douyin':
+            return self.validate_douyin_data(data)
+        else:
+            return self.validate_weibo_data(data)
+    
+    def normalize_platform_data(self, data: Dict[str, Any], platform: str = 'weibo') -> Dict[str, Any]:
+        """根据平台标准化数据"""
+        if platform.lower() == 'douyin':
+            return self.normalize_douyin_data(data)
+        else:
+            return self.normalize_data(data)

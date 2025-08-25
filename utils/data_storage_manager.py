@@ -24,22 +24,32 @@ class DataStorageManager:
         # 确保基础数据目录存在
         self.base_data_dir.mkdir(exist_ok=True)
     
-    def create_session_directory(self, keyword: str = None) -> str:
-        """创建新的爬取会话目录"""
+    def create_session_directory(self, keyword: str = None, platform: str = None) -> str:
+        """创建新的爬取会话目录 - 统一的两级目录结构"""
         try:
             # 生成时间戳
             self.session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            # 创建会话目录名称
+            # 确保平台名称存在
+            if not platform:
+                platform = "unknown"
+            
+            # 创建一级目录：时间戳+平台名称
+            date_part = self.session_timestamp.split('_')[0]  # 提取日期部分
+            level1_name = f"{date_part}_{platform.lower()}"
+            level1_dir = self.base_data_dir / level1_name
+            level1_dir.mkdir(exist_ok=True)
+            
+            # 创建二级目录：时间戳+平台名称+关键词
             if keyword:
                 # 清理关键词中的特殊字符，用于文件夹名称
                 clean_keyword = self._clean_filename(keyword)
-                session_name = f"{self.session_timestamp}_{clean_keyword}"
+                level2_name = f"{self.session_timestamp}_{platform.lower()}_{clean_keyword}"
             else:
-                session_name = self.session_timestamp
+                level2_name = f"{self.session_timestamp}_{platform.lower()}"
             
-            # 创建会话目录
-            self.current_session_dir = self.base_data_dir / session_name
+            # 创建完整的会话目录路径
+            self.current_session_dir = level1_dir / level2_name
             self.current_session_dir.mkdir(exist_ok=True)
             
             # 创建子目录
@@ -47,7 +57,7 @@ class DataStorageManager:
             (self.current_session_dir / "structured_data").mkdir(exist_ok=True)
             (self.current_session_dir / "analysis_report").mkdir(exist_ok=True)
             
-            logger.info(f"创建爬取会话目录: {self.current_session_dir}")
+            logger.info(f"创建统一爬取会话目录: {self.current_session_dir}")
             
             return str(self.current_session_dir)
             
@@ -55,19 +65,33 @@ class DataStorageManager:
             logger.error(f"创建会话目录失败: {e}")
             return None
     
-    def save_raw_data(self, data: List[Dict[str, Any]], page: int = None, data_type: str = "weibo") -> bool:
-        """保存原始数据"""
+    def save_raw_data(self, data: List[Dict[str, Any]], page: int = None, data_type: str = "weibo", platform: str = None) -> bool:
+        """保存原始数据 - 统一文件命名格式"""
         try:
             if not self.current_session_dir:
                 logger.error("未创建会话目录，无法保存原始数据")
                 return False
             
-            # 生成文件名
+            # 确定平台名称（优先使用platform参数，其次从data_type推断）
+            if platform:
+                platform_name = platform.lower()
+            elif data_type:
+                # 从data_type中提取平台名称
+                if 'weibo' in data_type.lower():
+                    platform_name = 'weibo'
+                elif 'douyin' in data_type.lower():
+                    platform_name = 'douyin'
+                else:
+                    platform_name = data_type.lower().replace('_data', '').replace('_web', '').replace('_mobile', '')
+            else:
+                platform_name = 'unknown'
+            
+            # 生成统一的文件名格式：平台名_raw_page_页码.json
             if page is not None:
-                filename = f"{data_type}_raw_page_{page:03d}.json"
+                filename = f"{platform_name}_raw_page_{page:03d}.json"
             else:
                 timestamp = datetime.now().strftime("%H%M%S")
-                filename = f"{data_type}_raw_{timestamp}.json"
+                filename = f"{platform_name}_raw_{timestamp}.json"
             
             # 保存文件
             file_path = self.current_session_dir / "raw_data" / filename
@@ -82,16 +106,27 @@ class DataStorageManager:
             logger.error(f"保存原始数据失败: {e}")
             return False
     
-    def save_structured_data(self, data: List[Dict[str, Any]], filename: str = None) -> bool:
-        """保存结构化数据"""
+    def save_structured_data(self, data: List[Dict[str, Any]], filename: str = None, platform: str = None) -> bool:
+        """保存结构化数据 - 统一文件命名格式"""
         try:
             if not self.current_session_dir:
                 logger.error("未创建会话目录，无法保存结构化数据")
                 return False
             
-            # 生成文件名
+            # 确定平台名称
+            if not platform:
+                # 尝试从会话目录名称中提取平台信息
+                dir_name = self.current_session_dir.name
+                if 'weibo' in dir_name.lower():
+                    platform = 'weibo'
+                elif 'douyin' in dir_name.lower():
+                    platform = 'douyin'
+                else:
+                    platform = 'unknown'
+            
+            # 生成统一的文件名格式：平台名_structured_data_时间戳.json
             if not filename:
-                filename = f"structured_data_{self.session_timestamp}.json"
+                filename = f"{platform.lower()}_structured_data_{self.session_timestamp}.json"
             
             # 保存文件
             file_path = self.current_session_dir / "structured_data" / filename
@@ -106,15 +141,26 @@ class DataStorageManager:
             logger.error(f"保存结构化数据失败: {e}")
             return False
     
-    def save_analysis_report(self, report: Dict[str, Any], db_manager=None, keyword: str = None) -> bool:
-        """保存分析报告"""
+    def save_analysis_report(self, report: Dict[str, Any], db_manager=None, keyword: str = None, platform: str = None) -> bool:
+        """保存分析报告 - 统一文件命名格式"""
         try:
             if not self.current_session_dir:
                 logger.error("未创建会话目录，无法保存分析报告")
                 return False
             
-            # 如果没有提供报告，则生成报告
-            if not report and db_manager:
+            # 确定平台名称
+            if not platform:
+                # 尝试从会话目录名称中提取平台信息
+                dir_name = self.current_session_dir.name
+                if 'weibo' in dir_name.lower():
+                    platform = 'weibo'
+                elif 'douyin' in dir_name.lower():
+                    platform = 'douyin'
+                else:
+                    platform = 'unknown'
+            
+            # 如果没有提供报告，则生成报告（目前只支持微博）
+            if not report and db_manager and platform == 'weibo':
                 analyzer = WeiboDataAnalyzer(db_manager)
                 report = analyzer.generate_summary_report(keyword or "默认关键词")
             
@@ -122,8 +168,8 @@ class DataStorageManager:
                 logger.warning("没有分析报告数据可保存")
                 return False
             
-            # 生成文件名
-            filename = f"analysis_report_{self.session_timestamp}.json"
+            # 生成统一的文件名格式：平台名_analysis_report_时间戳.json
+            filename = f"{platform.lower()}_analysis_report_{self.session_timestamp}.json"
             
             # 保存文件
             file_path = self.current_session_dir / "analysis_report" / filename

@@ -1,5 +1,5 @@
 """
-微博爬虫系统配置文件
+多平台爬虫系统配置文件
 """
 import os
 from datetime import datetime
@@ -10,7 +10,7 @@ DATABASE_CONFIG = {
     'port': 3306,
     'user': 'root',
     'password': '12345678', 
-    'database': 'weibo_crawler',
+    'database': 'multi_crawler',
     'charset': 'utf8mb4'
 }
 
@@ -89,10 +89,108 @@ COOKIE_CONFIG = {
     }
 }
 
+# 抖音API配置 - 2025年更新版本
+DOUYIN_API_CONFIG = {
+    # 基础应用信息
+    'app_name': 'aweme',
+    'version_code': '270600',  # 更新版本代码
+    'version_name': '27.6.0',  # 更新版本名称
+    'aid': '1128',  # 应用ID
+    'channel': 'douyin_web',  # 更新渠道
+    
+    # 设备信息
+    'device_platform': 'webapp',  # 更新为web平台
+    'device_type': 'PC',
+    'device_brand': 'PC',
+    'os_api': '10',
+    'os_version': '10',
+    'language': 'zh-CN',
+    'region': 'CN',
+    
+    # Web特有参数
+    'pc_client_type': '1',
+    'cookie_enabled': 'true',
+    'screen_width': '1920',
+    'screen_height': '1080',
+    'browser_language': 'zh-CN',
+    'browser_platform': 'Win32',
+    'browser_name': 'Chrome',
+    'browser_version': '120.0.0.0',
+    'browser_online': 'true',
+    
+    # 搜索相关参数
+    'search_source': 'normal_search',
+    'query_correct_type': '1',
+    'is_filter_search': '0',
+    'from_group_id': '',
+    'publish_time': '0',
+    'sort_type': '0',  # 0:综合排序, 1:最新发布, 2:最多点赞
+    'filter_duration': '0',  # 视频时长筛选
+}
+
+# 抖音URL配置 - 2025年更新版本
+DOUYIN_URLS = {
+    # 主要搜索接口 - 更新为最新可用接口
+    'search_url': 'https://www.douyin.com/aweme/v1/web/general/search/single/',
+    'search_url_backup': 'https://www.douyin.com/aweme/v1/web/search/item/',
+    'search_url_mobile': 'https://m.douyin.com/web/api/v2/search/item/',
+    
+    # 详情接口
+    'video_detail_url': 'https://www.douyin.com/aweme/v1/web/aweme/detail/',
+    'user_info_url': 'https://www.douyin.com/aweme/v1/web/user/profile/other/',
+    'comment_list_url': 'https://www.douyin.com/aweme/v1/web/comment/list/',
+    
+    # 新增接口
+    'hot_search_url': 'https://www.douyin.com/aweme/v1/web/hot/search/list/',
+    'suggest_url': 'https://www.douyin.com/aweme/v1/web/search/suggest/',
+}
+
+# 抖音Cookie配置
+DOUYIN_COOKIE_CONFIG = {
+    'enabled': True,
+    'douyin_cookies': {
+        'ttwid': '',  # 抖音设备ID
+        'msToken': '',  # 消息令牌
+        'odin_tt': '',  # 奥丁追踪ID
+        'passport_csrf_token': '',  # CSRF令牌
+        'passport_csrf_token_default': '',  # 默认CSRF令牌
+        'sid_guard': '',  # 会话保护
+        'uid_tt': '',  # 用户追踪ID
+        'uid_tt_ss': '',  # 用户追踪ID（会话）
+        'sid_tt': '',  # 会话ID
+        'sessionid': '',  # 会话ID
+        'sessionid_ss': '',  # 会话ID（会话存储）
+        'store-region': 'cn-bj',  # 存储区域
+        'store-region-src': 'uid',  # 存储区域来源
+    }
+}
+
+# 平台配置
+PLATFORM_CONFIG = {
+    'weibo': {
+        'name': '微博',
+        'enabled': True,
+        'spider_class': 'WeiboSpider',
+        'urls': 'WEIBO_URLS',
+        'cookies': 'COOKIE_CONFIG',
+        'api_config': 'WEIBO_API_CONFIG'
+    },
+    'douyin': {
+        'name': '抖音',
+        'enabled': True,
+        'spider_class': 'DouyinSpider',
+        'urls': 'DOUYIN_URLS',
+        'cookies': 'DOUYIN_COOKIE_CONFIG',
+        'api_config': 'DOUYIN_API_CONFIG'
+    }
+}
+
 # 数据存储配置
 STORAGE_CONFIG = {
     'save_images': True,  # 是否保存图片
+    'save_videos': True,  # 是否保存视频（抖音特有）
     'image_dir': 'data/images',
+    'video_dir': 'data/videos',  # 视频存储目录
     'backup_enabled': True,  # 是否启用数据备份
     'backup_interval': 24  # 备份间隔（小时）
 }

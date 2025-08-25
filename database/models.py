@@ -109,10 +109,48 @@ class DatabaseManager:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='微博数据表';
         """
         
+        # 抖音数据表
+        douyin_table_sql = """
+        CREATE TABLE IF NOT EXISTS douyin_data (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            _id VARCHAR(50) UNIQUE NOT NULL COMMENT '抖音视频ID',
+            aweme_id VARCHAR(50) COMMENT '视频ID',
+            created_at DATETIME COMMENT '创建时间',
+            content TEXT COMMENT '视频描述',
+            video_url VARCHAR(1000) COMMENT '视频URL',
+            video_cover VARCHAR(1000) COMMENT '视频封面URL',
+            video_duration FLOAT DEFAULT 0 COMMENT '视频时长(秒)',
+            music_title VARCHAR(200) COMMENT '背景音乐标题',
+            music_author VARCHAR(100) COMMENT '背景音乐作者',
+            location VARCHAR(200) COMMENT '地理位置',
+            hashtags TEXT COMMENT '话题标签JSON',
+            digg_count INT DEFAULT 0 COMMENT '点赞数量',
+            comment_count INT DEFAULT 0 COMMENT '评论数量',
+            share_count INT DEFAULT 0 COMMENT '分享数量',
+            play_count INT DEFAULT 0 COMMENT '播放数量',
+            user_id VARCHAR(50) COMMENT '用户ID',
+            user_name VARCHAR(100) COMMENT '用户昵称',
+            user_avatar VARCHAR(1000) COMMENT '用户头像URL',
+            user_verified BOOLEAN DEFAULT FALSE COMMENT '是否认证',
+            url VARCHAR(500) COMMENT '视频URL',
+            keyword VARCHAR(100) COMMENT '关键词',
+            platform VARCHAR(20) DEFAULT 'douyin' COMMENT '平台标识',
+            crawl_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '爬取时间',
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
+            INDEX idx_created_at (created_at),
+            INDEX idx_user_id (user_id),
+            INDEX idx_keyword (keyword),
+            INDEX idx_crawl_time (crawl_time),
+            INDEX idx_platform (platform)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='抖音数据表';
+        """
+        
         # 爬取日志表
         log_table_sql = """
         CREATE TABLE IF NOT EXISTS crawl_logs (
             id INT AUTO_INCREMENT PRIMARY KEY,
+            platform VARCHAR(20) DEFAULT 'weibo' COMMENT '平台类型',
             keyword VARCHAR(100) COMMENT '关键词',
             start_time DATETIME COMMENT '开始时间',
             end_time DATETIME COMMENT '结束时间',
@@ -121,13 +159,15 @@ class DatabaseManager:
             error_count INT DEFAULT 0 COMMENT '错误数量',
             status VARCHAR(20) DEFAULT 'running' COMMENT '状态',
             error_message TEXT COMMENT '错误信息',
-            created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            INDEX idx_platform (platform)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='爬取日志表';
         """
         
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute(weibo_table_sql)
+                cursor.execute(douyin_table_sql)
                 cursor.execute(log_table_sql)
                 logger.info("数据表创建成功")
                 return True
@@ -182,6 +222,52 @@ class DatabaseManager:
                 success_count += 1
         
         logger.info(f"批量插入完成，成功: {success_count}/{len(data_list)}")
+        return success_count
+    
+    def insert_douyin_data(self, data: Dict[str, Any]) -> bool:
+        """插入抖音数据"""
+        if not self.connection:
+            if not self.connect():
+                return False
+        
+        sql = """
+        INSERT IGNORE INTO douyin_data (
+            _id, aweme_id, created_at, content, video_url, video_cover, video_duration,
+            music_title, music_author, location, hashtags, digg_count, comment_count,
+            share_count, play_count, user_id, user_name, user_avatar, user_verified,
+            url, keyword, platform
+        ) VALUES (
+            %(_id)s, %(aweme_id)s, %(created_at)s, %(content)s, %(video_url)s,
+            %(video_cover)s, %(video_duration)s, %(music_title)s, %(music_author)s,
+            %(location)s, %(hashtags)s, %(digg_count)s, %(comment_count)s,
+            %(share_count)s, %(play_count)s, %(user_id)s, %(user_name)s,
+            %(user_avatar)s, %(user_verified)s, %(url)s, %(keyword)s, %(platform)s
+        )
+        """
+        
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(sql, data)
+                return True
+        except Exception as e:
+            logger.error(f"插入抖音数据失败: {e}")
+            return False
+    
+    def batch_insert_douyin_data(self, data_list: List[Dict[str, Any]]) -> int:
+        """批量插入抖音数据"""
+        if not self.connection:
+            if not self.connect():
+                return 0
+        
+        if not data_list:
+            return 0
+        
+        success_count = 0
+        for data in data_list:
+            if self.insert_douyin_data(data):
+                success_count += 1
+        
+        logger.info(f"抖音数据批量插入完成，成功: {success_count}/{len(data_list)}")
         return success_count
     
     def get_existing_ids(self) -> set:

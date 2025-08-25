@@ -1,5 +1,5 @@
 """
-微博爬虫系统快速启动脚本
+多平台爬虫系统快速启动脚本
 提供简单的命令行界面
 """
 import os
@@ -15,7 +15,7 @@ from utils.logger import setup_logger
 
 def run_crawler(keyword=None, pages=None):
     """运行爬虫"""
-    print("🚀 启动微博爬虫系统...")
+    print("🚀 启动多平台爬虫系统...")
     
     crawler = WeiboDataCrawler()
     
@@ -82,7 +82,7 @@ def show_status():
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
-        description="微博爬虫系统 - 李雨珊事件数据采集",
+        description="多平台爬虫系统 - 李雨珊事件数据采集",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用示例:
@@ -115,7 +115,7 @@ def main():
         return 1
     
     print("="*60)
-    print("🐍 微博爬虫系统 - 李雨珊事件数据采集")
+    print("🐍 多平台爬虫系统 - 李雨珊事件数据采集")
     print("="*60)
     
     success = False

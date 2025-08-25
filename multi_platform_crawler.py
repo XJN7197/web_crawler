@@ -1,36 +1,41 @@
 """
-多平台爬虫主程序
+多平台数据爬虫主程序
+支持微博、抖音等多个社交媒体平台的数据爬取
 """
 import os
 import sys
 import time
 import signal
+import argparse
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from config.settings import CRAWLER_CONFIG
+from config.settings import CRAWLER_CONFIG, PLATFORM_CONFIG
 from database.models import DatabaseManager
 from crawler.weibo_spider import WeiboSpider
+from crawler.douyin_spider import DouyinSpider
 from utils.data_storage_manager import DataStorageManager
 from utils.data_analyzer import WeiboDataAnalyzer
 from utils.logger import setup_logger, log_crawler_start, log_crawler_end, log_page_result
 from utils.helpers import calculate_time_diff
 
-class WeiboDataCrawler:
-    """微博数据爬虫主类"""
+class MultiPlatformCrawler:
+    """多平台数据爬虫主类"""
     
-    def __init__(self):
+    def __init__(self, platform: str = 'weibo'):
+        self.platform = platform.lower()
         self.logger = setup_logger()
         self.db_manager = DatabaseManager()
         self.storage_manager = DataStorageManager()
-        self.spider = WeiboSpider(self.storage_manager)
+        self.spider = self._create_spider()
         self.is_running = True
         
         # 统计信息
         self.stats = {
+            'platform': self.platform,
             'total_crawled': 0,
             'success_count': 0,
             'error_count': 0,
@@ -42,6 +47,15 @@ class WeiboDataCrawler:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
+    def _create_spider(self):
+        """根据平台创建相应的爬虫实例"""
+        if self.platform == 'weibo':
+            return WeiboSpider(self.storage_manager)
+        elif self.platform == 'douyin':
+            return DouyinSpider(self.storage_manager)
+        else:
+            raise ValueError(f"不支持的平台: {self.platform}")
+    
     def _signal_handler(self, signum, frame):
         """信号处理器，用于优雅退出"""
         self.logger.info("接收到退出信号，正在安全退出...")
@@ -49,7 +63,7 @@ class WeiboDataCrawler:
     
     def initialize(self) -> bool:
         """初始化系统"""
-        self.logger.info("正在初始化多平台爬虫系统...")
+        self.logger.info(f"正在初始化{PLATFORM_CONFIG[self.platform]['name']}爬虫系统...")
         
         try:
             # 创建数据库
@@ -74,8 +88,8 @@ class WeiboDataCrawler:
             self.logger.error(f"初始化失败: {e}")
             return False
     
-    def crawl_weibo_data(self, keyword: str = None, max_pages: int = None) -> bool:
-        """爬取微博数据"""
+    def crawl_data(self, keyword: str = None, max_pages: int = None) -> bool:
+        """爬取数据"""
         if not keyword:
             keyword = CRAWLER_CONFIG['keyword']
         
@@ -85,18 +99,19 @@ class WeiboDataCrawler:
         self.stats['start_time'] = datetime.now()
         log_crawler_start(self.logger, keyword)
         
-        # 创建数据存储会话目录
-        session_dir = self.storage_manager.create_session_directory(keyword)
+        # 创建数据存储会话目录 - 传递平台信息
+        session_dir = self.storage_manager.create_session_directory(keyword, self.platform)
         if session_dir:
-            self.logger.info(f"创建数据存储会话目录: {session_dir}")
+            self.logger.info(f"创建统一数据存储会话目录: {session_dir}")
         
         try:
-            # 获取已存在的微博ID，用于去重
-            existing_ids = self.db_manager.get_existing_ids()
-            self.logger.info(f"数据库中已有 {len(existing_ids)} 条记录")
+            # 获取已存在的ID，用于去重
+            existing_ids = self._get_existing_ids()
+            self.logger.info(f"数据库中已有 {len(existing_ids)} 条{PLATFORM_CONFIG[self.platform]['name']}记录")
             
             # 记录爬取开始日志
             log_data = {
+                'platform': self.platform,
                 'keyword': keyword,
                 'start_time': self.stats['start_time'],
                 'end_time': None,
@@ -119,29 +134,29 @@ class WeiboDataCrawler:
                 
                 try:
                     # 爬取当前页数据
-                    weibo_list = self.spider.crawl_with_retry(keyword, page)
+                    content_list = self.spider.crawl_with_retry(keyword, page)
                     
-                    if not weibo_list:
+                    if not content_list:
                         self.logger.warning(f"第 {page} 页没有获取到数据")
                         continue
                     
                     # 过滤已存在的数据
-                    new_weibo_list = []
-                    for weibo in weibo_list:
-                        if weibo['_id'] not in existing_ids:
-                            new_weibo_list.append(weibo)
-                            existing_ids.add(weibo['_id'])
+                    new_content_list = []
+                    for content in content_list:
+                        if content['_id'] not in existing_ids:
+                            new_content_list.append(content)
+                            existing_ids.add(content['_id'])
                     
-                    if new_weibo_list:
-                        batch_data.extend(new_weibo_list)
-                        all_crawled_data.extend(new_weibo_list)  # 保存所有数据用于文件存储
-                        self.stats['total_crawled'] += len(new_weibo_list)
+                    if new_content_list:
+                        batch_data.extend(new_content_list)
+                        all_crawled_data.extend(new_content_list)  # 保存所有数据用于文件存储
+                        self.stats['total_crawled'] += len(new_content_list)
                         
-                        log_page_result(self.logger, page, len(new_weibo_list))
+                        log_page_result(self.logger, page, len(new_content_list))
                         
                         # 批量插入数据库
                         if len(batch_data) >= CRAWLER_CONFIG['batch_size']:
-                            success_count = self.db_manager.batch_insert_weibo_data(batch_data)
+                            success_count = self._batch_insert_data(batch_data)
                             self.stats['success_count'] += success_count
                             self.stats['error_count'] += len(batch_data) - success_count
                             batch_data = []  # 清空缓存
@@ -158,7 +173,7 @@ class WeiboDataCrawler:
             
             # 处理剩余的批量数据
             if batch_data:
-                success_count = self.db_manager.batch_insert_weibo_data(batch_data)
+                success_count = self._batch_insert_data(batch_data)
                 self.stats['success_count'] += success_count
                 self.stats['error_count'] += len(batch_data) - success_count
             
@@ -182,23 +197,25 @@ class WeiboDataCrawler:
             self.db_manager.insert_crawl_log(log_data)
             log_crawler_end(self.logger, self.stats)
             
-            # 保存结构化数据到文件
+            # 保存结构化数据到文件 - 传递平台信息
             if all_crawled_data:
-                self.storage_manager.save_structured_data(all_crawled_data)
+                self.storage_manager.save_structured_data(all_crawled_data, platform=self.platform)
                 self.logger.info(f"保存结构化数据: {len(all_crawled_data)} 条记录")
             
-            # 生成并保存分析报告
+            # 生成并保存分析报告 - 传递平台信息
             try:
-                analyzer = WeiboDataAnalyzer(self.db_manager)
-                report = analyzer.generate_summary_report(keyword)
-                if report:
-                    self.storage_manager.save_analysis_report(report)
-                    self.logger.info("保存分析报告完成")
+                if self.platform == 'weibo':  # 目前只有微博有分析器
+                    analyzer = WeiboDataAnalyzer(self.db_manager)
+                    report = analyzer.generate_summary_report(keyword)
+                    if report:
+                        self.storage_manager.save_analysis_report(report, platform=self.platform)
+                        self.logger.info("保存分析报告完成")
             except Exception as e:
                 self.logger.warning(f"生成分析报告失败: {e}")
             
             # 保存会话元数据
             session_metadata = {
+                'platform': self.platform,
                 'keyword': keyword,
                 'max_pages': max_pages,
                 'total_crawled': self.stats['total_crawled'],
@@ -229,6 +246,32 @@ class WeiboDataCrawler:
             
             return False
     
+    def _get_existing_ids(self) -> set:
+        """获取已存在的内容ID"""
+        if self.platform == 'weibo':
+            return self.db_manager.get_existing_ids()
+        elif self.platform == 'douyin':
+            # 为抖音添加获取已存在ID的方法
+            try:
+                with self.db_manager.connection.cursor() as cursor:
+                    cursor.execute("SELECT _id FROM douyin_data")
+                    results = cursor.fetchall()
+                    return {row[0] for row in results}
+            except Exception as e:
+                self.logger.error(f"获取已存在抖音ID失败: {e}")
+                return set()
+        else:
+            return set()
+    
+    def _batch_insert_data(self, data_list) -> int:
+        """批量插入数据"""
+        if self.platform == 'weibo':
+            return self.db_manager.batch_insert_weibo_data(data_list)
+        elif self.platform == 'douyin':
+            return self.db_manager.batch_insert_douyin_data(data_list)
+        else:
+            return 0
+    
     def get_statistics(self) -> Dict[str, Any]:
         """获取爬取统计信息"""
         db_stats = self.db_manager.get_crawl_statistics()
@@ -248,7 +291,17 @@ class WeiboDataCrawler:
 
 def main():
     """主函数"""
-    crawler = WeiboDataCrawler()
+    parser = argparse.ArgumentParser(description="多平台数据爬虫系统")
+    parser.add_argument('--platform', '-p', choices=['weibo', 'douyin'], 
+                       default='weibo', help='选择爬取平台')
+    parser.add_argument('--keyword', '-k', type=str, 
+                       help='搜索关键词')
+    parser.add_argument('--pages', '-n', type=int, 
+                       help='最大爬取页数')
+    
+    args = parser.parse_args()
+    
+    crawler = MultiPlatformCrawler(platform=args.platform)
     
     try:
         # 初始化系统
@@ -257,12 +310,13 @@ def main():
             return 1
         
         # 开始爬取数据
-        success = crawler.crawl_weibo_data()
+        success = crawler.crawl_data(keyword=args.keyword, max_pages=args.pages)
         
         # 显示统计信息
         stats = crawler.get_statistics()
+        platform_name = PLATFORM_CONFIG[args.platform]['name']
         print("\n" + "="*50)
-        print("爬取统计信息:")
+        print(f"{platform_name}爬取统计信息:")
         print(f"本次爬取: {stats['current_session']['total_crawled']} 条")
         print(f"成功保存: {stats['current_session']['success_count']} 条")
         print(f"失败数量: {stats['current_session']['error_count']} 条")

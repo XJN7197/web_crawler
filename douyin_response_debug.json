@@ -1,0 +1,37 @@
+{
+  "status_code": 0,
+  "data": [],
+  "qc": "",
+  "cursor": 0,
+  "has_more": 0,
+  "extra": {
+    "now": 1755588299000,
+    "logid": "2025081915245922E2EF0FE276BD259C1B",
+    "fatal_item_ids": [],
+    "search_request_id": ""
+  },
+  "log_pb": {
+    "impr_id": "2025081915245922E2EF0FE276BD259C1B"
+  },
+  "search_nil_info": {
+    "search_nil_type": "antispam_check",
+    "is_load_more": "first_flush",
+    "search_nil_item": "hit_shark",
+    "text_type": 50
+  },
+  "guide_search_words": null,
+  "global_doodle_config": {
+    "keyword": "李雨珊"
+  },
+  "polling_time": 3,
+  "time_cost": {
+    "stream_inner": 38
+  },
+  "ops": null,
+  "douyin_ai_search_info": {
+    "is_simple_qa_intent": false,
+    "is_hit_high_risk": false,
+    "ai_search_req_patch": {}
+  },
+  "path": "/aweme/v1/web/general/search/single/"
+}

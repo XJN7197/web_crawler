@@ -1,5 +1,5 @@
 """
-微博爬虫系统安装和配置脚本
+多平台爬虫系统安装和配置脚本
 """
 import os
 import sys
@@ -44,7 +44,7 @@ def setup_database_config():
     config['port'] = int(input("数据库端口 (默认: 3306): ").strip() or '3306')
     config['user'] = input("数据库用户名: ").strip()
     config['password'] = input("数据库密码: ").strip()
-    config['database'] = input("数据库名称 (默认: weibo_crawler): ").strip() or 'weibo_crawler'
+    config['database'] = input("数据库名称 (默认: multi_crawler): ").strip() or 'multi_crawler'
     
     # 测试数据库连接
     try:
@@ -133,7 +133,7 @@ def initialize_database():
 def show_usage_instructions():
     """显示使用说明"""
     print("\n" + "="*60)
-    print("🎉 微博爬虫系统安装完成！")
+    print("🎉 多平台爬虫系统安装完成！")
     print("="*60)
     print("\n📖 使用方法:")
     print("1. 基本爬取:")
@@ -151,7 +151,7 @@ def show_usage_instructions():
 
 def main():
     """主安装流程"""
-    print("🚀 微博爬虫系统安装程序")
+    print("🚀 多平台爬虫系统安装程序")
     print("="*50)
     
     # 检查Python版本

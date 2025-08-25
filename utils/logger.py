@@ -7,7 +7,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from config.settings import LOG_CONFIG
 
-def setup_logger(name: str = 'weibo_crawler') -> logging.Logger:
+def setup_logger(name: str = 'multi_crawler') -> logging.Logger:
     """设置日志记录器"""
     
     # 创建日志目录
